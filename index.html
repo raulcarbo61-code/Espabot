@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroChat - Tutor de Medios de Comunicación</title>
+    
+    <!-- jsPDF para generar PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* ====== Estilos Globales ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ====== Contenedor Principal ====== */
+        #app {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(44, 62, 102, 0.15);
+            width: 100%;
+            max-width: 900px;
+            height: 95vh;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(44, 62, 102, 0.08);
+        }
+
+        /* ====== Encabezado ====== */
+        .header {
+            background: linear-gradient(135deg, #2c3e66, #3d5a8c);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header h1 span {
+            font-size: 1.6rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            padding: 6px 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ====== Área de Chat ====== */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: #f7f9fc;
+            scroll-behavior: smooth;
+        }
+
+        /* ====== Mensajes ====== */
+        .message {
+            max-width: 80%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            background: #2c3e66;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot {
+            background: #ffffff;
+            color: #1a1a2e;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+        }
+
+        .message.bot .bot-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message.bot .download-btn {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.2s;
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .message.bot .download-btn:hover {
+            background: #1d2b4a;
+        }
+
+        /* ====== Indicador de escritura ====== */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background: #ffffff;
+            padding: 14px 20px;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+            gap: 6px;
+        }
+
+        .typing-indicator.active {
+            display: flex;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #2c3e66;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* ====== Menú de Botones ====== */
+        .menu-container {
+            padding: 12px 24px 8px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #ffffff;
+            border-top: 1px solid #e8edf2;
+            flex-shrink: 0;
+        }
+
+        .menu-btn {
+            background: #eef2f5;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #2c3e66;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .menu-btn:hover {
+            background: #dce4ed;
+            transform: translateY(-1px);
+        }
+
+        .menu-btn.primary {
+            background: #2c3e66;
+            color: white;
+        }
+
+        .menu-btn.primary:hover {
+            background: #1d2b4a;
+        }
+
+        /* ====== Input de mensaje ====== */
+        .input-container {
+            padding: 8px 24px 16px 24px;
+            background: #ffffff;
+            border-top: 1px solid #e8edf2;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1.5px solid #dce4ed;
+            border-radius: 24px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .input-container input:focus {
+            border-color: #2c3e66;
+        }
+
+        .input-container button {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .input-container button:hover {
+            background: #1d2b4a;
+        }
+
+        .input-container button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ====== Modal (Configuración) ====== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 32px;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 90%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+        }
+
+        .modal-box h2 {
+            margin-bottom: 16px;
+            color: #2c3e66;
+        }
+
+        .modal-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #dce4ed;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+        }
+
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-box .modal-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .modal-box .modal-actions .save-btn {
+            background: #2c3e66;
+            color: white;
+        }
+        .modal-box .modal-actions .save-btn:hover {
+            background: #1d2b4a;
+        }
+        .modal-box .modal-actions .cancel-btn {
+            background: #eef2f5;
+            color: #2c3e66;
+        }
+        .modal-box .modal-actions .cancel-btn:hover {
+            background: #dce4ed;
+        }
+
+        /* ====== Modal del Quiz ====== */
+        .quiz-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            animation: fadeIn 0.3s;
+        }
+
+        .quiz-overlay.active {
+            display: flex;
+        }
+
+        .quiz-box {
+            background: white;
+            padding: 32px;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 92%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+        }
+
+        .quiz-box h2 {
+            color: #2c3e66;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quiz-box .question-text {
+            font-size: 1.2rem;
+            margin: 16px 0 20px 0;
+            font-weight: 500;
+        }
+
+        .quiz-box .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-box .options button {
+            background: #f7f9fc;
+            border: 2px solid #e8edf2;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .quiz-box .options button:hover:not(:disabled) {
+            background: #eef2f5;
+            border-color: #2c3e66;
+        }
+
+        .quiz-box .options button.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .quiz-box .options button.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .quiz-box .options button:disabled {
+            cursor: default;
+            opacity: 0.7;
+        }
+
+        .quiz-box .feedback {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 12px 0 16px 0;
+            font-weight: 500;
+        }
+
+        .quiz-box .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .quiz-box .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .quiz-box .quiz-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .quiz-box .quiz-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .quiz-box .quiz-actions .primary-btn {
+            background: #2c3e66;
+            color: white;
+        }
+        .quiz-box .quiz-actions .primary-btn:hover {
+            background: #1d2b4a;
+        }
+        .quiz-box .quiz-actions .secondary-btn {
+            background: #eef2f5;
+            color: #2c3e66;
+        }
+        .quiz-box .quiz-actions .secondary-btn:hover {
+            background: #dce4ed;
+        }
+
+        /* ====== Offline Warning ====== */
+        .offline-banner {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 8px 16px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f5c6cb;
+            flex-shrink: 0;
+        }
+
+        .offline-banner.active {
+            display: block;
+        }
+
+        /* ====== Responsive ====== */
+        @media (max-width: 640px) {
+            #app {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            .header h1 {
+                font-size: 1rem;
+            }
+            .message {
+                max-width: 92%;
+                font-size: 0.9rem;
+                padding: 12px 14px;
+            }
+            .chat-container {
+                padding: 16px;
+            }
+            .menu-container {
+                padding: 10px 16px 6px 16px;
+                gap: 6px;
+            }
+            .menu-btn {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+            .input-container {
+                padding: 8px 16px 12px 16px;
+            }
+            .input-container input {
+                font-size: 0.9rem;
+                padding: 10px 14px;
+            }
+            .input-container button {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+            .modal-box, .quiz-box {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .header h1 span {
+                font-size: 1.2rem;
+            }
+            .menu-btn {
+                font-size: 0.75rem;
+                padding: 5px 10px;
+            }
+        }
+
+        /* Scroll personalizado */
+        .chat-container::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-container::-webkit-scrollbar-track {
+            background: #eef2f5;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #2c3e66;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ====== APLICACIÓN PRINCIPAL ====== -->
+<div id="app">
+    
+    <!-- Encabezado -->
+    <div class="header">
+        <h1><span>🚀</span> AstroChat</h1>
+        <div class="header-actions">
+            <button class="icon-btn" id="settingsBtn" title="Configuración (doble clic)">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Banner offline -->
+    <div class="offline-banner" id="offlineBanner">
+        📡 Sin conexión a internet. El tutor IA no está disponible, pero el juego y la interfaz siguen funcionando.
+    </div>
+
+    <!-- Área de chat -->
+    <div class="chat-container" id="chatContainer">
+        <!-- Los mensajes se insertan aquí dinámicamente -->
+    </div>
+
+    <!-- Indicador de escritura -->
+    <div class="typing-indicator" id="typingIndicator">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+    </div>
+
+    <!-- Menú de botones -->
+    <div class="menu-container">
+        <button class="menu-btn" data-prompt="medios escritos">📰 Medios escritos</button>
+        <button class="menu-btn" data-prompt="medios digitales">💻 Medios digitales</button>
+        <button class="menu-btn" data-prompt="medios tradicionales">📺 Medios tradicionales</button>
+        <button class="menu-btn primary" id="summaryBtn">📝 Resumen de un tema</button>
+        <button class="menu-btn primary" id="quizBtn">🎮 Juego</button>
+    </div>
+
+    <!-- Input de mensaje -->
+    <div class="input-container">
+        <input type="text" id="userInput" placeholder="Escribe tu pregunta..." autocomplete="off">
+        <button id="sendBtn">Enviar</button>
+    </div>
+</div>
+
+<!-- ====== MODAL DE CONFIGURACIÓN ====== -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal-box">
+        <h2>⚙️ Configuración del Worker</h2>
+        <p style="margin-bottom:12px;color:#555;">URL del Cloudflare Worker (donde se procesan las preguntas):</p>
+        <input type="url" id="workerUrlInput" placeholder="https://tu-worker.workers.dev">
+        <div class="modal-actions">
+            <button class="cancel-btn" id="settingsCancelBtn">Cancelar</button>
+            <button class="save-btn" id="settingsSaveBtn">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ====== MODAL DEL QUIZ ====== -->
+<div class="quiz-overlay" id="quizModal">
+    <div class="quiz-box" id="quizBox">
+        <h2>
+            <span>🌌 Quiz Espacial</span>
+            <span style="font-size:0.9rem;font-weight:400;" id="quizScoreDisplay">0/5</span>
+        </h2>
+        <div id="questionContainer">
+            <div class="question-text" id="questionText">Cargando pregunta...</div>
+            <div class="options" id="optionsContainer"></div>
+            <div class="feedback" id="feedbackContainer"></div>
+        </div>
+        <div class="quiz-actions">
+            <button class="secondary-btn" id="quizCloseBtn">Cerrar</button>
+            <button class="primary-btn" id="quizNextBtn" style="display:none;">Siguiente ➜</button>
+            <button class="primary-btn" id="quizRestartBtn" style="display:none;">🔄 Nueva partida</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================================================================
+    // CONFIGURACIÓN INICIAL
+    // ================================================================
+
+    const DEFAULT_WORKER_URL = 'https://tu-worker.workers.dev'; // <-- CAMBIAR POR URL REAL
+
+    // System prompt detallado
+    const SYSTEM_PROMPT = `Eres AstroChat, un tutor de medios de comunicación para estudiantes de 12 a 18 años. 
+    Tu tono es amigable, entusiasta y cercano. Usas emojis espaciales como 🚀🌌🌠🛸☀️🪐.
+    Respondes con claridad, máximo 3 párrafos, a menos que el usuario pida un resumen extenso.
+    Si no sabes algo, admítelo con honestidad y ofrece orientación.
+    Temas que manejas: medios escritos (prensa, revistas), medios digitales (redes sociales, blogs, podcasts), 
+    medios tradicionales (radio, televisión, cine). También puedes hablar de astronomía, observación, constelaciones, 
+    telescopios, nebulosas, cúmulos estelares, galaxias, Vía Láctea, sistema solar, exoplanetas, agujeros negros, 
+    supernovas, big bang, misiones espaciales, astronautas.
+    Evita usar emojis de dinero (💵💰💲).
+    Sé educativo, inspirador y fomenta la curiosidad.`;
+
+    // Banco de preguntas del quiz (15+)
+    const QUESTION_BANK = [
+        { question: "¿Qué tipo de medio utiliza ondas de radio para transmitir audio?",
+          options: ["Televisión", "Radio", "Periódico", "Podcast"], correct: 1 },
+        { question: "¿Cómo se llama la galaxia donde vivimos?",
+          options: ["Andrómeda", "Vía Láctea", "Triángulo", "Remolino"], correct: 1 },
+        { question: "¿Qué telescopio espacial es famoso por sus imágenes del cosmos?",
+          options: ["Hubble", "James Webb", "Kepler", "Chandra"], correct: 0 },
+        { question: "¿Qué es una nebulosa?",
+          options: ["Un planeta", "Una nube de gas y polvo", "Una estrella", "Un agujero negro"], correct: 1 },
+        { question: "¿Qué fenómeno ocurre cuando una estrella masiva explota?",
+          options: ["Nebulosa", "Supernova", "Agujero negro", "Pulsar"], correct: 1 },
+        { question: "¿Cuál es el planeta más grande del sistema solar?",
+          options: ["Saturno", "Júpiter", "Urano", "Neptuno"], correct: 1 },
+        { question: "¿Qué medio de comunicación es el más antiguo?",
+          options: ["Internet", "Televisión", "Periódico", "Radio"], correct: 2 },
+        { question: "¿Qué son los exoplanetas?",
+          options: ["Planetas fuera del sistema solar", "Planetas en la Vía Láctea", "Planetas gigantes", "Planetas rocosos"], correct: 0 },
+        { question: "¿Qué agencia espacial envió el rover Perseverance a Marte?",
+          options: ["NASA", "ESA", "Roscosmos", "SpaceX"], correct: 0 },
+        { question: "¿Qué es un agujero negro?",
+          options: ["Una estrella muerta", "Una región con gravedad extrema", "Un planeta oscuro", "Una galaxia"], correct: 1 },
+        { question: "¿Qué significa 'big bang'?",
+          options: ["El fin del universo", "El origen del universo", "Una explosión estelar", "Un agujero negro"], correct: 1 },
+        { question: "¿Qué son los medios digitales?",
+          options: ["Periódicos y revistas", "Radio y TV", "Redes sociales y blogs", "Libros y enciclopedias"], correct: 2 },
+        { question: "¿Qué es un cúmulo estelar?",
+          options: ["Un grupo de estrellas", "Una sola estrella", "Una galaxia", "Un planeta"], correct: 0 },
+        { question: "¿Qué misión espacial llevó al hombre a la Luna?",
+          options: ["Apolo 11", "Voyager", "Sputnik", "Mercury"], correct: 0 },
+        { question: "¿Qué son las constelaciones?",
+          options: ["Grupos de estrellas", "Naves espaciales", "Planetas", "Telescopios"], correct: 0 }
+    ];
+
+    // ================================================================
+    // ESTADO GLOBAL
+    // ================================================================
+
+    let chatHistory = [];           // Array de { role, content } para el contexto
+    let currentSummaryText = '';    // Para guardar el resumen actual y poder descargar PDF
+    let isProcessing = false;
+
+    // Estado del quiz
+    let quizQuestions = [];
+    let quizIndex = 0;
+    let quizScore = 0;
+    let quizAnswered = false;
+    let bestScore = parseInt(localStorage.getItem('astrochat_bestScore')) || 0;
+
+    // ================================================================
+    // ELEMENTOS DOM
+    // ================================================================
+
+    const chatContainer = document.getElementById('chatContainer');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const workerUrlInput = document.getElementById('workerUrlInput');
+    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+    const settingsCancelBtn = document.getElementById('settingsCancelBtn');
+    const quizBtn = document.getElementById('quizBtn');
+    const quizModal = document.getElementById('quizModal');
+    const quizBox = document.getElementById('quizBox');
+    const questionText = document.getElementById('questionText');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const feedbackContainer = document.getElementById('feedbackContainer');
+    const quizNextBtn = document.getElementById('quizNextBtn');
+    const quizRestartBtn = document.getElementById('quizRestartBtn');
+    const quizCloseBtn = document.getElementById('quizCloseBtn');
+    const quizScoreDisplay = document.getElementById('quizScoreDisplay');
+    const offlineBanner = document.getElementById('offlineBanner');
+
+    // ================================================================
+    // FUNCIONES DE UTILIDAD
+    // ================================================================
+
+    function getWorkerUrl() {
+        return localStorage.getItem('astrochat_workerUrl') || DEFAULT_WORKER_URL;
+    }
+
+    function setWorkerUrl(url) {
+        localStorage.setItem('astrochat_workerUrl', url);
+    }
+
+    // Agregar un mensaje al chat (visual e historial)
+    function addMessage(role, content, isSummary = false) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+
+        if (role === 'bot') {
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'bot-content';
+            contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+            
+            // Si es un resumen, agregar botón de descarga
+            if (isSummary && content.length > 100) {
+                currentSummaryText = content;
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.innerHTML = '📄 Descargar PDF';
+                downloadBtn.onclick = () => downloadPDF(content);
+                contentDiv.appendChild(downloadBtn);
+            }
+            div.appendChild(contentDiv);
+        } else {
+            div.textContent = content;
+        }
+
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        // Guardar en historial (últimos 10 pares)
+        if (role === 'user') {
+            chatHistory.push({ role: 'user', content: content });
+            // Limitar a 10 mensajes de usuario (20 en total con respuestas)
+            if (chatHistory.filter(m => m.role === 'user').length > 10) {
+                // Eliminar el par más antiguo (usuario + respuesta)
+                const firstUserIdx = chatHistory.findIndex(m => m.role === 'user');
+                if (firstUserIdx > 0) {
+                    chatHistory.splice(0, firstUserIdx + 1);
+                } else {
+                    chatHistory.shift();
+                }
+            }
+        } else {
+            chatHistory.push({ role: 'assistant', content: content });
+        }
+    }
+
+    // Mostrar mensaje de bienvenida
+    function showWelcomeMessage() {
+        const welcome = `🚀 ¡Hola, futuro comunicador! Soy AstroChat, tu tutor espacial. Puedes preguntarme sobre medios de comunicación, medios tradicionales y medios digitales o usar el menú.`;
+        const div = document.createElement('div');
+        div.className = 'message bot';
+        div.innerHTML = `<div class="bot-content">${welcome.replace(/\n/g, '<br>')}</div>`;
+        chatContainer.appendChild(div);
+        chatHistory.push({ role: 'assistant', content: welcome });
+    }
+
+    // Mostrar/ocultar indicador de escritura
+    function setTyping(active) {
+        typingIndicator.classList.toggle('active', active);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Manejar errores de conexión
+    function showError(message) {
+        const div = document.createElement('div');
+        div.className = 'message bot';
+        div.innerHTML = `<div class="bot-content">❌ ${message}</div>`;
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // ================================================================
+    // FUNCIONES PRINCIPALES
+    // ================================================================
+
+    // Enviar mensaje al Worker
+    async function sendMessageToWorker(userMessage, isSummaryRequest = false) {
+        if (isProcessing) return;
+        isProcessing = true;
+        sendBtn.disabled = true;
+
+        // Mostrar mensaje del usuario
+        addMessage('user', userMessage);
+
+        // Mostrar indicador de escritura
+        setTyping(true);
+
+        try {
+            const workerUrl = getWorkerUrl();
+            if (!workerUrl || workerUrl === 'https://tu-worker.workers.dev') {
+                throw new Error('URL del Worker no configurada. Ve a ⚙️ y establece la URL correcta.');
+            }
+
+            // Preparar historial para el contexto (últimos 10 pares)
+            const contextMessages = chatHistory.slice(-20); // Máximo 20 mensajes
+
+            const response = await fetch(workerUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: contextMessages,
+                    systemPrompt: SYSTEM_PROMPT,
+                    isSummary: isSummaryRequest
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Error del Worker: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            const botReply = data.reply || 'Lo siento, no pude generar una respuesta.';
+            
+            // Si es resumen, marcar para mostrar botón de PDF
+            const isSummary = isSummaryRequest || userMessage.toLowerCase().includes('resumen');
+            addMessage('bot', botReply, isSummary);
+
+        } catch (error) {
+            console.error('Error:', error);
+            let errorMsg = '⚠️ Error de conexión con el tutor IA. Verifica que el Worker esté activo y la URL correcta.';
+            if (error.message.includes('URL del Worker no configurada')) {
+                errorMsg = error.message;
+            }
+            showError(errorMsg);
+        } finally {
+            setTyping(false);
+            isProcessing = false;
+            sendBtn.disabled = false;
+            userInput.value = '';
+            userInput.focus();
+        }
+    }
+
+    // ================================================================
+    // GENERACIÓN DE PDF (con jsPDF)
+    // ================================================================
+
+    function downloadPDF(content) {
+        try {
+            // Extraer título (primera línea o usar "Resumen")
+            const lines = content.split('\n');
+            let title = lines.find(l => l.trim().length > 0) || 'Resumen';
+            // Limpiar título (quitar emojis y caracteres especiales)
+            title = title.replace(/[^a-zA-Z0-9áéíóúñÑ ]/g, '').trim().slice(0, 50);
+            if (!title) title = 'Resumen';
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'pt', 'a4');
+            
+            // Configurar fuente y márgenes
+            const margin = 40;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const maxWidth = pageWidth - margin * 2;
+            
+            // Título
+            doc.setFontSize(18);
+            doc.setTextColor(44, 62, 102);
+            doc.text(title, margin, 60);
+            
+            // Línea separadora
+            doc.setDrawColor(44, 62, 102);
+            doc.setLineWidth(1);
+            doc.line(margin, 70, pageWidth - margin, 70);
+            
+            // Contenido
+            doc.setFontSize(11);
+            doc.setTextColor(30, 30, 50);
+            
+            // Limpiar contenido de emojis y caracteres especiales para evitar errores
+            const cleanContent = content.replace(/[^\w\s.,;:!?áéíóúñÑ()\-]/g, ' ');
+            
+            // Dividir en párrafos
+            const paragraphs = cleanContent.split('\n').filter(p => p.trim().length > 0);
+            let y = 90;
+            
+            paragraphs.forEach((paragraph, idx) => {
+                const linesArray = doc.splitTextToSize(paragraph, maxWidth);
+                if (y + linesArray.length * 16 > doc.internal.pageSize.getHeight() - margin) {
+                    doc.addPage();
+                    y = margin + 20;
+                }
+                doc.text(linesArray, margin, y);
+                y += linesArray.length * 16 + 8;
+            });
+
+            // Guardar PDF
+            const filename = `resumen_${title.toLowerCase().replace(/\s+/g, '_')}.pdf`;
+            doc.save(filename);
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            showError('No se pudo generar el PDF. Verifica la librería jsPDF.');
+        }
+    }
+
+    // ================================================================
+    // FUNCIONES DEL QUIZ
+    // ================================================================
+
+    function startQuiz() {
+        // Seleccionar 5 preguntas aleatorias sin repetición
+        const shuffled = [...QUESTION_BANK].sort(() => Math.random() - 0.5);
+        quizQuestions = shuffled.slice(0, 5);
+        quizIndex = 0;
+        quizScore = 0;
+        quizAnswered = false;
+        
+        quizModal.classList.add('active');
+        quizNextBtn.style.display = 'none';
+        quizRestartBtn.style.display = 'none';
+        showQuizQuestion();
+    }
+
+    function showQuizQuestion() {
+        if (quizIndex >= quizQuestions.length) {
+            endQuiz();
+            return;
+        }
+
+        const q = quizQuestions[quizIndex];
+        questionText.textContent = q.question;
+        quizScoreDisplay.textContent = `${quizScore}/${quizQuestions.length}`;
+        
+        optionsContainer.innerHTML = '';
+        feedbackContainer.innerHTML = '';
+        feedbackContainer.className = 'feedback';
+        quizAnswered = false;
+        quizNextBtn.style.display = 'none';
+        quizRestartBtn.style.display = 'none';
+
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.textContent = `${String.fromCharCode(65 + idx)}. ${opt}`;
+            btn.dataset.index = idx;
+            btn.onclick = () => handleQuizAnswer(idx);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function handleQuizAnswer(selected) {
+        if (quizAnswered) return;
+        quizAnswered = true;
+
+        const q = quizQuestions[quizIndex];
+        const buttons = optionsContainer.querySelectorAll('button');
+        const isCorrect = selected === q.correct;
+
+        if (isCorrect) quizScore++;
+
+        // Marcar opciones
+        buttons.forEach((btn, idx) => {
+            btn.disabled = true;
+            if (idx === q.correct) btn.classList.add('correct');
+            if (idx === selected && !isCorrect) btn.classList.add('incorrect');
+        });
+
+        // Mostrar feedback
+        feedbackContainer.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+        feedbackContainer.textContent = isCorrect ? '✅ ¡Correcto! Bien hecho.' : `❌ Incorrecto. La respuesta correcta es: ${q.options[q.correct]}`;
+
+        quizScoreDisplay.textContent = `${quizScore}/${quizQuestions.length}`;
+
+        // Mostrar botón siguiente o finalizar
+        if (quizIndex < quizQuestions.length - 1) {
+            quizNextBtn.style.display = 'inline-block';
+            quizNextBtn.textContent = 'Siguiente ➜';
+        } else {
+            quizNextBtn.style.display = 'inline-block';
+            quizNextBtn.textContent = 'Ver resultado 🏆';
+        }
+        quizRestartBtn.style.display = 'none';
+    }
+
+    function nextQuizQuestion() {
+        quizIndex++;
+        if (quizIndex >= quizQuestions.length) {
+            endQuiz();
+        } else {
+            showQuizQuestion();
+        }
+    }
+
+    function endQuiz() {
+        const total = quizQuestions.length;
+        const message = `🎉 Has completado el quiz. Puntuación: ${quizScore}/${total}`;
+        
+        // Guardar mejor puntuación
+        if (quizScore > bestScore) {
+            bestScore = quizScore;
+            localStorage.setItem('astrochat_bestScore', String(bestScore));
+        }
+
+        questionText.textContent = `¡Quiz finalizado!`;
+        optionsContainer.innerHTML = `
+            <div style="text-align:center;padding:20px;font-size:1.2rem;">
+                <p>${message}</p>
+                <p style="margin-top:12px;font-size:0.9rem;color:#555;">
+                    🏆 Mejor puntuación histórica: ${bestScore}/${total}
+                    ${quizScore >= total ? ' 🌟 ¡Perfecto!' : ''}
+                </p>
+            </div>
+        `;
+        feedbackContainer.innerHTML = '';
+        feedbackContainer.className = 'feedback';
+        quizNextBtn.style.display = 'none';
+        quizRestartBtn.style.display = 'inline-block';
+        quizScoreDisplay.textContent = `${quizScore}/${total}`;
+    }
+
+    function closeQuiz() {
+        quizModal.classList.remove('active');
+    }
+
+    function restartQuiz() {
+        startQuiz();
+    }
+
+    // ================================================================
+    // EVENT LISTENERS
+    // ================================================================
+
+    // Enviar mensaje
+    sendBtn.addEventListener('click', () => {
+        const text = userInput.value.trim();
+        if (!text || isProcessing) return;
+        // Detectar si es solicitud de resumen
+        const isSummary = text.toLowerCase().includes('resumen');
+        sendMessageToWorker(text, isSummary);
+    });
+
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendBtn.click();
+        }
+    });
+
+    // Botones del menú
+    document.querySelectorAll('.menu-btn[data-prompt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const prompt = btn.dataset.prompt;
+            userInput.value = `Háblame sobre ${prompt}`;
+            sendBtn.click();
+        });
+    });
+
+    // Botón resumen
+    document.getElementById('summaryBtn').addEventListener('click', () => {
+        const topic = prompt('📝 ¿Sobre qué tema quieres un resumen extenso? (ej: medios digitales, astronomía, etc.)');
+        if (topic && topic.trim()) {
+            const text = `resumen de ${topic.trim()}`;
+            userInput.value = text;
+            sendBtn.click();
+        }
+    });
+
+    // Botón quiz
+    quizBtn.addEventListener('click', startQuiz);
+
+    // Controles del quiz
+    quizNextBtn.addEventListener('click', nextQuizQuestion);
+    quizRestartBtn.addEventListener('click', restartQuiz);
+    quizCloseBtn.addEventListener('click', closeQuiz);
+
+    // Cerrar quiz con ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && quizModal.classList.contains('active')) {
+            closeQuiz();
+        }
+    });
+
+    // Configuración (doble clic en engranaje)
+    let settingsClickCount = 0;
+    let settingsTimer = null;
+
+    settingsBtn.addEventListener('click', () => {
+        settingsClickCount++;
+        if (settingsClickCount === 1) {
+            settingsTimer = setTimeout(() => {
+                settingsClickCount = 0;
+            }, 400);
+        } else if (settingsClickCount >= 2) {
+            clearTimeout(settingsTimer);
+            settingsClickCount = 0;
+            // Abrir modal de configuración
+            workerUrlInput.value = getWorkerUrl();
+            settingsModal.classList.add('active');
+        }
+    });
+
+    settingsSaveBtn.addEventListener('click', () => {
+        const url = workerUrlInput.value.trim();
+        if (url) {
+            setWorkerUrl(url);
+            alert('✅ URL del Worker guardada correctamente.');
+            settingsModal.classList.remove('active');
+        } else {
+            alert('⚠️ Por favor ingresa una URL válida.');
+        }
+    });
+
+    settingsCancelBtn.addEventListener('click', () => {
+        settingsModal.classList.remove('active');
+    });
+
+    // Cerrar modal de configuración con clic fuera
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) settingsModal.classList.remove('active');
+    });
+
+    // ================================================================
+    // DETECCIÓN DE OFFLINE / ONLINE
+    // ================================================================
+
+    function updateOfflineStatus() {
+        if (!navigator.onLine) {
+            offlineBanner.classList.add('active');
+        } else {
+            offlineBanner.classList.remove('active');
+        }
+    }
+
+    window.addEventListener('online', updateOfflineStatus);
+    window.addEventListener('offline', updateOfflineStatus);
+    updateOfflineStatus();
+
+    // ================================================================
+    // SERVICE WORKER (registro)
+    // ================================================================
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('✅ Service Worker registrado correctamente.'))
+            .catch(err => console.warn('⚠️ No se pudo registrar el Service Worker:', err));
+    }
+
+    // ================================================================
+    // INICIALIZACIÓN
+    // ================================================================
+
+    // Mostrar mensaje de bienvenida si no hay historial
+    if (chatHistory.length === 0) {
+        showWelcomeMessage();
+    }
+
+    // Si hay mensajes guardados en localStorage (recuperar historial)
+    try {
+        const savedHistory = localStorage.getItem('astrochat_history');
+        if (savedHistory) {
+            const parsed = JSON.parse(savedHistory);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Reconstruir chat visual
+                chatContainer.innerHTML = '';
+                parsed.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = `message ${msg.role}`;
+                    if (msg.role === 'bot') {
+                        div.innerHTML = `<div class="bot-content">${msg.content.replace(/\n/g, '<br>')}</div>`;
+                    } else {
+                        div.textContent = msg.content;
+                    }
+                    chatContainer.appendChild(div);
+                });
+                chatHistory = parsed;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+    } catch (e) {
+        console.warn('No se pudo cargar el historial guardado.');
+    }
+
+    // Guardar historial al salir
+    window.addEventListener('beforeunload', () => {
+        try {
+            localStorage.setItem('astrochat_history', JSON.stringify(chatHistory));
+        } catch (e) {}
+    });
+
+    console.log('🚀 AstroChat inicializado correctamente.');
+    console.log('🌐 URL del Worker:', getWorkerUrl());
+</script>
+
+</body>
+</html>
